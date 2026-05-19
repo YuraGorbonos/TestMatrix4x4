@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MatrixMatcher.Model
 {
-    public class MatrixData : MonoBehaviour
+    public class MatrixData
     {
         public List<Matrix4x4> Models { get; private set; } = new();
 

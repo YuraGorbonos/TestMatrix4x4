@@ -42,24 +42,21 @@ namespace MatrixMatcher.View
 
         private void ClearVisuals()
         {
-            foreach (var obj in _modelObjects)
-            {
-                if (obj != null)
-                {
-                    Destroy(obj);
-                }
-            }
-
-            foreach (var obj in _spaceObjects)
-            {
-                if (obj != null)
-                {
-                    Destroy(obj);
-                }
-            }
-
+            DestroyObjects(_modelObjects);
+            DestroyObjects(_spaceObjects);
             _modelObjects.Clear();
             _spaceObjects.Clear();
+        }
+
+        private static void DestroyObjects(List<GameObject> objects)
+        {
+            foreach (var obj in objects)
+            {
+                if (obj != null)
+                {
+                    Destroy(obj);
+                }
+            }
         }
 
         private void CreateVisuals(IReadOnlyList<Matrix4x4> matrices, string prefix, List<GameObject> targetList, Color color)
@@ -93,40 +90,39 @@ namespace MatrixMatcher.View
 
         private void ApplyMatchedColors()
         {
-            var matchedModelIndices = new HashSet<int>();
-            var matchedSpaceIndices = new HashSet<int>();
+            var matchedModelIndices = CollectMatchedIndices(true);
+            var matchedSpaceIndices = CollectMatchedIndices(false);
+
+            ApplyColor(_modelObjects, matchedModelIndices, _matchedColor);
+            ApplyColor(_spaceObjects, matchedSpaceIndices, _matchedColor);
+        }
+
+        private HashSet<int> CollectMatchedIndices(bool isModel)
+        {
+            var indices = new HashSet<int>();
 
             foreach (var vo in _controller.ValidOffsets)
             {
                 foreach (var m in vo.Matches)
                 {
-                    matchedModelIndices.Add(m.ModelIndex);
-                    matchedSpaceIndices.Add(m.SpaceIndex);
+                    indices.Add(isModel ? m.ModelIndex : m.SpaceIndex);
                 }
             }
 
-            for (int i = 0; i < _modelObjects.Count; i++)
+            return indices;
+        }
+
+        private static void ApplyColor(List<GameObject> objects, HashSet<int> matchedIndices, Color color)
+        {
+            for (int i = 0; i < objects.Count; i++)
             {
-                if (matchedModelIndices.Contains(i))
+                if (matchedIndices.Contains(i))
                 {
-                    var r = _modelObjects[i].GetComponent<Renderer>();
+                    var r = objects[i].GetComponent<Renderer>();
 
                     if (r != null)
                     {
-                        r.material.color = _matchedColor;
-                    }
-                }
-            }
-
-            for (int i = 0; i < _spaceObjects.Count; i++)
-            {
-                if (matchedSpaceIndices.Contains(i))
-                {
-                    var r = _spaceObjects[i].GetComponent<Renderer>();
-
-                    if (r != null)
-                    {
-                        r.material.color = _matchedColor;
+                        r.material.color = color;
                     }
                 }
             }

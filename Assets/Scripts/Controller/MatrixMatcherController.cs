@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace MatrixMatcher.Controller
 {
-    public class MatrixMatcherController : MonoBehaviour
+    public class MatrixMatcherController
     {
         public struct MatrixMatch
         {
@@ -62,50 +62,6 @@ namespace MatrixMatcher.Controller
                 index = -1;
                 return false;
             }
-
-            private static int ComputeHash(Matrix4x4 m)
-            {
-                unchecked
-                {
-                    int hash = 17;
-                    hash = hash * 31 + Quant(m.m00);
-                    hash = hash * 31 + Quant(m.m01);
-                    hash = hash * 31 + Quant(m.m02);
-                    hash = hash * 31 + Quant(m.m03);
-                    hash = hash * 31 + Quant(m.m10);
-                    hash = hash * 31 + Quant(m.m11);
-                    hash = hash * 31 + Quant(m.m12);
-                    hash = hash * 31 + Quant(m.m13);
-                    hash = hash * 31 + Quant(m.m20);
-                    hash = hash * 31 + Quant(m.m21);
-                    hash = hash * 31 + Quant(m.m22);
-                    hash = hash * 31 + Quant(m.m23);
-                    hash = hash * 31 + Quant(m.m30);
-                    hash = hash * 31 + Quant(m.m31);
-                    hash = hash * 31 + Quant(m.m32);
-                    hash = hash * 31 + Quant(m.m33);
-                    return hash;
-                }
-            }
-
-            private static int Quant(float v)
-            {
-                return Mathf.RoundToInt(v * 10000f);
-            }
-
-            private static bool AreEqual(Matrix4x4 a, Matrix4x4 b, float tol = 1e-5f)
-            {
-                for (int i = 0; i < 4; i++)
-                for (int j = 0; j < 4; j++)
-                {
-                    if (Mathf.Abs(a[i, j] - b[i, j]) > tol)
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
         }
 
         [System.Serializable]
@@ -117,7 +73,7 @@ namespace MatrixMatcher.Controller
         [System.Serializable]
         private class JsonValidOffset
         {
-            public JsonMatrix Offset;
+            public Model.JsonMatrix Offset;
             public List<JsonMatch> Matches;
         }
 
@@ -128,25 +84,23 @@ namespace MatrixMatcher.Controller
             public int SpaceIndex;
         }
 
-        [System.Serializable]
-        private class JsonMatrix
-        {
-            public float m00, m10, m20, m30;
-            public float m01, m11, m21, m31;
-            public float m02, m12, m22, m32;
-            public float m03, m13, m23, m33;
-        }
-
         public IReadOnlyList<ValidOffset> ValidOffsets => _validOffsets;
 
         private Model.MatrixData _data;
         private readonly List<ValidOffset> _validOffsets = new();
 
+        private const float Tolerance = 1e-5f;
+        private const int QuantFactor = 10000;
+
         public void Initialize(Model.MatrixData data)
         {
             _data = data;
             FindAllValidOffsets();
-            SaveResultsToJson("result.json");
+        }
+
+        public void SaveResults(string fileName)
+        {
+            SaveResultsToJson(fileName);
         }
 
         private void FindAllValidOffsets()
@@ -158,7 +112,7 @@ namespace MatrixMatcher.Controller
                 return;
             }
 
-            var lookup = new SpaceLookup(_data.Spaces);
+            var spaceLookup = new SpaceLookup(_data.Spaces);
             var seenOffsets = new List<Matrix4x4>();
 
             for (int j = 0; j < _data.Spaces.Count; j++)
@@ -194,7 +148,7 @@ namespace MatrixMatcher.Controller
 
                     foreach (var m in _data.Models)
                     {
-                        if (!lookup.TryFind(offset * m, out _))
+                        if (!spaceLookup.TryFind(offset * m, out _))
                         {
                             allMatch = false;
                             break;
@@ -203,14 +157,13 @@ namespace MatrixMatcher.Controller
 
                     if (allMatch)
                     {
-                        seenOffsets.Add(offset);
                         var vo = new ValidOffset { Offset = offset, Matches = new List<MatrixMatch>() };
 
                         for (int mi = 0; mi < _data.Models.Count; mi++)
                         {
                             var transformed = offset * _data.Models[mi];
 
-                            if (lookup.TryFind(transformed, out int si))
+                            if (spaceLookup.TryFind(transformed, out int si))
                             {
                                 vo.Matches.Add(new MatrixMatch { ModelIndex = mi, SpaceIndex = si, Offset = offset });
                             }
@@ -221,6 +174,11 @@ namespace MatrixMatcher.Controller
                 }
             }
 
+            LogResults();
+        }
+
+        private void LogResults()
+        {
             Debug.Log("=== Результат поиска ===");
             Debug.Log($"Найдено валидных смещений: {_validOffsets.Count}");
 
@@ -243,26 +201,19 @@ namespace MatrixMatcher.Controller
 
         private void SaveResultsToJson(string fileName)
         {
-            var result = new JsonResult
-                         {
-                             ValidOffsets = new List<JsonValidOffset>()
-                         };
+            var result = new JsonResult { ValidOffsets = new List<JsonValidOffset>() };
 
             foreach (var vo in _validOffsets)
             {
                 var jsonVo = new JsonValidOffset
                              {
                                  Offset = MatrixToJson(vo.Offset),
-                                 Matches = new List<JsonMatch>()
+                                 Matches = new List<JsonMatch>(vo.Matches.Count)
                              };
 
                 foreach (var m in vo.Matches)
                 {
-                    jsonVo.Matches.Add(new JsonMatch
-                                       {
-                                           ModelIndex = m.ModelIndex,
-                                           SpaceIndex = m.SpaceIndex
-                                       });
+                    jsonVo.Matches.Add(new JsonMatch { ModelIndex = m.ModelIndex, SpaceIndex = m.SpaceIndex });
                 }
 
                 result.ValidOffsets.Add(jsonVo);
@@ -282,9 +233,9 @@ namespace MatrixMatcher.Controller
             }
         }
 
-        private static JsonMatrix MatrixToJson(Matrix4x4 matrix)
+        private static Model.JsonMatrix MatrixToJson(Matrix4x4 matrix)
         {
-            return new JsonMatrix
+            return new Model.JsonMatrix
                    {
                        m00 = matrix.m00, m10 = matrix.m10, m20 = matrix.m20, m30 = matrix.m30,
                        m01 = matrix.m01, m11 = matrix.m11, m21 = matrix.m21, m31 = matrix.m31,
@@ -293,12 +244,42 @@ namespace MatrixMatcher.Controller
                    };
         }
 
-        private static bool AreEqual(Matrix4x4 a, Matrix4x4 b, float tol = 1e-5f)
+        private static int ComputeHash(Matrix4x4 m)
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + Quant(m.m00);
+                hash = hash * 31 + Quant(m.m01);
+                hash = hash * 31 + Quant(m.m02);
+                hash = hash * 31 + Quant(m.m03);
+                hash = hash * 31 + Quant(m.m10);
+                hash = hash * 31 + Quant(m.m11);
+                hash = hash * 31 + Quant(m.m12);
+                hash = hash * 31 + Quant(m.m13);
+                hash = hash * 31 + Quant(m.m20);
+                hash = hash * 31 + Quant(m.m21);
+                hash = hash * 31 + Quant(m.m22);
+                hash = hash * 31 + Quant(m.m23);
+                hash = hash * 31 + Quant(m.m30);
+                hash = hash * 31 + Quant(m.m31);
+                hash = hash * 31 + Quant(m.m32);
+                hash = hash * 31 + Quant(m.m33);
+                return hash;
+            }
+        }
+
+        private static int Quant(float v)
+        {
+            return Mathf.RoundToInt(v * QuantFactor);
+        }
+
+        private static bool AreEqual(Matrix4x4 a, Matrix4x4 b)
         {
             for (int i = 0; i < 4; i++)
             for (int j = 0; j < 4; j++)
             {
-                if (Mathf.Abs(a[i, j] - b[i, j]) > tol)
+                if (Mathf.Abs(a[i, j] - b[i, j]) > Tolerance)
                 {
                     return false;
                 }

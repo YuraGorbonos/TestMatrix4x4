@@ -7,41 +7,9 @@ namespace MatrixMatcher.Services
     public static class JsonLoader
     {
         [System.Serializable]
-        private class JsonMatrix
-        {
-            public float m00, m10, m20, m30;
-            public float m01, m11, m21, m31;
-            public float m02, m12, m22, m32;
-            public float m03, m13, m23, m33;
-
-            public Matrix4x4 ToMatrix4x4()
-            {
-                return new Matrix4x4
-                       {
-                           m00 = m00,
-                           m10 = m10,
-                           m20 = m20,
-                           m30 = m30,
-                           m01 = m01,
-                           m11 = m11,
-                           m21 = m21,
-                           m31 = m31,
-                           m02 = m02,
-                           m12 = m12,
-                           m22 = m22,
-                           m32 = m32,
-                           m03 = m03,
-                           m13 = m13,
-                           m23 = m23,
-                           m33 = m33
-                       };
-            }
-        }
-
-        [System.Serializable]
         private class JsonMatrixArray
         {
-            public JsonMatrix[] matrices;
+            public Model.JsonMatrix[] matrices;
         }
 
         public static List<Matrix4x4> LoadFromFile(string fileName)
@@ -81,21 +49,32 @@ namespace MatrixMatcher.Services
 
             if (wrapper?.matrices is { Length: > 0 })
             {
-                var list = new List<Matrix4x4>();
+                var list = new List<Matrix4x4>(wrapper.matrices.Length);
 
                 foreach (var jm in wrapper.matrices)
                 {
-                    list.Add(jm.ToMatrix4x4());
+                    list.Add(ToMatrix4x4(jm));
                 }
 
                 return list;
             }
 
-            var single = JsonUtility.FromJson<JsonMatrix>(json);
+            var single = JsonUtility.FromJson<Model.JsonMatrix>(json);
 
             return single != null
-                       ? new List<Matrix4x4> { single.ToMatrix4x4() }
+                       ? new List<Matrix4x4> { ToMatrix4x4(single) }
                        : new List<Matrix4x4>();
+        }
+
+        private static Matrix4x4 ToMatrix4x4(Model.JsonMatrix jm)
+        {
+            return new Matrix4x4
+                   {
+                       m00 = jm.m00, m10 = jm.m10, m20 = jm.m20, m30 = jm.m30,
+                       m01 = jm.m01, m11 = jm.m11, m21 = jm.m21, m31 = jm.m31,
+                       m02 = jm.m02, m12 = jm.m12, m22 = jm.m22, m32 = jm.m32,
+                       m03 = jm.m03, m13 = jm.m13, m23 = jm.m23, m33 = jm.m33
+                   };
         }
     }
 }

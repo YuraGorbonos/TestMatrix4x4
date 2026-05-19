@@ -15,26 +15,23 @@ namespace MatrixMatcher.Entry
         private string _spacesFileName = "space.json";
 
         [SerializeField]
+        private string _resultFileName = "result.json";
+
+        [SerializeField]
         private MatrixVisualizer _visualizer;
 
         private void Start()
         {
-            var mainCamera = Camera.main;
-
-            if (mainCamera != null && mainCamera.GetComponent<FreeCameraController>() == null)
-            {
-                mainCamera.gameObject.AddComponent<FreeCameraController>();
-            }
-
             var models = JsonLoader.LoadFromFile(_modelsFileName);
             var spaces = JsonLoader.LoadFromFile(_spacesFileName);
 
-            var data = gameObject.AddComponent<MatrixData>();
+            var data = new MatrixData();
             data.SetModels(models);
             data.SetSpaces(spaces);
 
-            var controller = gameObject.AddComponent<MatrixMatcherController>();
+            var controller = new MatrixMatcherController();
             controller.Initialize(data);
+            controller.SaveResults(_resultFileName);
 
             _visualizer.Initialize(data, controller);
         }
