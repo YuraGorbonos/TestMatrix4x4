@@ -20,9 +20,10 @@ namespace MatrixMatcher.Entry
         private void Start()
         {
             var mainCamera = Camera.main;
-            if (mainCamera != null && mainCamera.GetComponent<View.FreeCameraController>() == null)
+
+            if (mainCamera != null && mainCamera.GetComponent<FreeCameraController>() == null)
             {
-                mainCamera.gameObject.AddComponent<View.FreeCameraController>();
+                mainCamera.gameObject.AddComponent<FreeCameraController>();
             }
 
             var models = JsonLoader.LoadFromFile(_modelsFileName);
@@ -32,7 +33,7 @@ namespace MatrixMatcher.Entry
             data.SetModels(models);
             data.SetSpaces(spaces);
 
-            var controller = gameObject.AddComponent<Controller.MatrixMatcherController>();
+            var controller = gameObject.AddComponent<MatrixMatcherController>();
             controller.Initialize(data);
 
             _visualizer.Initialize(data, controller);

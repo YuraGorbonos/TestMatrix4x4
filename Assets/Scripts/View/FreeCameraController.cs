@@ -16,6 +16,7 @@ namespace MatrixMatcher.View
 
         private float _pitch;
         private float _yaw;
+        private float _speed;
 
         private void Start()
         {
@@ -56,8 +57,8 @@ namespace MatrixMatcher.View
                 transform.rotation = Quaternion.Euler(_pitch, _yaw, 0f);
             }
 
-            float speed = keyboard.leftShiftKey.isPressed ? _fastMoveSpeed : _moveSpeed;
-            speed *= Time.deltaTime;
+            _speed = keyboard.leftShiftKey.isPressed ? _fastMoveSpeed : _moveSpeed;
+            _speed *= Time.deltaTime;
 
             Vector3 move = Vector3.zero;
 
@@ -91,7 +92,7 @@ namespace MatrixMatcher.View
                 move += transform.up;
             }
 
-            transform.position += move * speed;
+            transform.position += move * _speed;
         }
     }
 }

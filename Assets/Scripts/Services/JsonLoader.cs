@@ -79,7 +79,7 @@ namespace MatrixMatcher.Services
 
             var wrapper = JsonUtility.FromJson<JsonMatrixArray>(json);
 
-            if (wrapper?.matrices != null && wrapper.matrices.Length > 0)
+            if (wrapper?.matrices is { Length: > 0 })
             {
                 var list = new List<Matrix4x4>();
 
